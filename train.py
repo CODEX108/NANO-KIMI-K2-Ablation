@@ -31,8 +31,8 @@ from models import Transformer
 from config import Config
 from finewebdataset import FineWebStreamingDataset, FineWebDataset
 from dataset import TextDataset, DataCollator, FileStreamingIterableDataset,DirectStreamingDataset
-from optimizer import MuonClip, get_muon_param_groups
-
+# from optimizer import MuonClip, get_muon_param_groups
+from torch.optim import AdamW
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -84,15 +84,7 @@ class Trainer:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
-        param_groups = get_muon_param_groups(self.model, lr=self.learning_rate, weight_decay=self.weight_decay)
-        self.optimizer = MuonClip(
-            param_groups,
-            lr=self.learning_rate,
-            momentum=self.momentum,
-            weight_decay=self.weight_decay,
-            qk_clip_tau=self.qk_clip_tau,
-            qk_clip_enabled=True
-        )
+        self.optimizer = AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         
         self.mixed_precision = mixed_precision and self.device.type == 'cuda'
         self.scaler = torch.amp.GradScaler('cuda') if self.mixed_precision else None
@@ -328,7 +320,7 @@ class Trainer:
                         loss = loss / self.gradient_accumulation_steps
                         loss.backward()
                     
-                    max_logits = logits.abs().max().item()
+                    # max_logits = logits.abs().max().item()
                     accumulated_loss += loss.item()
                     accumulation_counter += 1
                     
@@ -339,10 +331,10 @@ class Trainer:
                         grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
                         
                         if self.mixed_precision:
-                            self.scaler.step(self.optimizer, max_logits=max_logits)
+                            self.scaler.step(self.optimizer)
                             self.scaler.update()
                         else:
-                            self.optimizer.step(max_logits=max_logits)
+                            self.optimizer.step()
                         
                         self.optimizer.zero_grad(set_to_none=True)
                         
@@ -367,6 +359,7 @@ class Trainer:
                         
                         if self.global_step % self.eval_interval == 0:
                             val_loss = self.evaluate()
+                            self.plot_metrics()
                             if val_loss is not None:
                                 self.metrics['val_loss'].append(val_loss)
                                 self.metrics['val_steps'].append(self.global_step)
@@ -400,7 +393,6 @@ class Trainer:
         ))
         
         self.save_checkpoint('final')
-        self.plot_metrics()
         
         with open(self.log_dir / 'training_metrics.json', 'w') as f:
             json.dump(self.metrics, f, indent=2)
