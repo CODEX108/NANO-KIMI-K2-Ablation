@@ -566,6 +566,14 @@ def main():
         del dl_iter
         console.print(f"[green]Cached {len(cached_val_samples)} validation batches from training stream[/green]")
 
+    default_base_path = Path("/kaggle/working")
+    final_checkpoint_dir = args.checkpoint_path
+    final_log_dir = Path("logs")
+    
+    if not final_checkpoint_dir:
+        final_checkpoint_dir = default_base_path / "checkpoints"
+        final_log_dir = default_base_path / "logs"
+    
     trainer = Trainer(
         model=model,
         train_loader=dataloader,
@@ -578,8 +586,9 @@ def main():
         max_steps=args.max_steps,
         eval_interval=args.eval_interval,
         save_interval=args.save_interval,
-        checkpoint_dir="checkpoints",
-        log_dir="logs",
+        # 🌟 Use the resolved writeable path 🌟
+        checkpoint_dir=str(final_checkpoint_dir),
+        log_dir=str(final_log_dir),
         device=args.device,
         gradient_accumulation_steps=args.gradient_accumulation,
         max_grad_norm=args.max_grad_norm,
