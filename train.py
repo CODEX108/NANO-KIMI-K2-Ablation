@@ -568,7 +568,7 @@ def main():
 
     default_base_path = Path("/kaggle/working")
     final_checkpoint_dir = args.checkpoint_path
-    final_log_dir = Path("logs")
+    final_log_dir = default_base_path / "logs"
     
     if not final_checkpoint_dir:
         final_checkpoint_dir = default_base_path / "checkpoints"
@@ -586,7 +586,7 @@ def main():
         max_steps=args.max_steps,
         eval_interval=args.eval_interval,
         save_interval=args.save_interval,
-        # 🌟 Use the resolved writeable path 🌟
+        # resolved writeable path 
         checkpoint_dir=str(final_checkpoint_dir),
         log_dir=str(final_log_dir),
         device=args.device,
